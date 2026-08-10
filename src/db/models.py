@@ -3,6 +3,9 @@ from uuid import UUID, uuid4
 from sqlalchemy import Date, DateTime, String, Time, func
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from pydantic import BaseModel, Field
+from src.services.chunking import ChunkingStrategy
+
 
 
 class Base(DeclarativeBase):
@@ -74,3 +77,24 @@ class Booking(Base):
         server_default=func.now(),
         nullable=False,
     )
+
+
+
+class ChunkResponse(BaseModel):
+    index: int
+    text: str
+    section: str | None = None
+
+
+class DocumentIngestionResponse(BaseModel):
+    document_id: UUID
+    filename: str
+    content_type: str | None
+    chunking_strategy: ChunkingStrategy
+    chunk_count: int
+    chunks: list[ChunkResponse]
+
+
+class DocumentIngestionError(BaseModel):
+    detail: str
+

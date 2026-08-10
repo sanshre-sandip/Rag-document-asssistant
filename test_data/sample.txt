@@ -1,0 +1,20 @@
+Introduction
+
+Our company builds software for modern businesses. We provide cloud
+applications, APIs, and data platforms.
+
+Technology
+
+Our backend services use Python and FastAPI. We use PostgreSQL for
+relational data and Redis for caching and conversation memory.
+
+Architecture
+
+The RAG system extracts documents, creates chunks, generates local
+embeddings, and stores vectors in Weaviate Cloud.
+
+Interview Process
+
+Candidates can ask questions about the company and request an interview.
+The assistant collects the candidate's name, email, date, and preferred
+time before creating a booking.
