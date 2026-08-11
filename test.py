@@ -1,19 +1,23 @@
-from src.services.embeddings import (
-    EMBEDDING_DIMENSION,
-    embed_text,
+from src.services.llm import generate
+
+
+messages = [
+    {
+        "role": "system",
+        "content": "You are a helpful assistant.",
+    },
+    {
+        "role": "user",
+        "content": "Explain what FastAPI is in one sentence.",
+    },
+]
+
+
+response = generate(
+    messages=messages,
+    temperature=0.2,
+    max_tokens=100,
 )
 
-
-text = """
-Our backend services use Python and FastAPI.
-We use PostgreSQL for relational data and Redis
-for caching and conversation memory.
-"""
-
-
-vector = embed_text(text)
-
-print("Embedding dimension:", len(vector))
-print("Expected dimension:", EMBEDDING_DIMENSION)
-print("First 10 values:", vector[:10])
-print("All values are floats:", all(isinstance(x, float) for x in vector))
+print("LLM response:")
+print(response)
