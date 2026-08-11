@@ -11,6 +11,7 @@ from src.db.database import get_db
 from src.db.models import (
     ChunkResponse,
     Document,
+    DocumentChunk,
     DocumentIngestionResponse,
 )
 from src.services.chunking import (
@@ -119,6 +120,8 @@ async def ingest_document(
         filename=file.filename,
         content_type=file.content_type,
         source="upload",
+        chunking_strategy=chunking_strategy.value,
+        chunk_count=len(chunks),
     )
 
     db.add(document)
@@ -164,6 +167,22 @@ async def ingest_document(
             ),
         ) from exc
 
+    db.add_all(
+        [
+            DocumentChunk(
+                document_id=document.id,
+                weaviate_id=weaviate_id,
+                chunk_index=chunk.index,
+                section=chunk.section,
+            )
+            for chunk, weaviate_id in zip(
+                chunks,
+                weaviate_ids,
+            )
+        ]
+    )
+
+    await db.commit()
 
     return DocumentIngestionResponse(
         document_id=document.id,

@@ -170,12 +170,16 @@ Rag-document-asssistant/
 │       ├── retriever.py
 │       └── vector_store.py
 │
-├── tests/
 ├── pyproject.toml
 ├── uv.lock
-├── .env.example
 └── README.md
 </pre>
+
+<p>
+Note: there is no automated <code>tests/</code> suite or <code>.env.example</code>
+yet — required environment variables are listed under "Configure Environment"
+below.
+</p>
 
 <h2>🔄 RAG Pipeline</h2>
 
@@ -251,6 +255,13 @@ section
 chunk_index
 text
 </pre>
+
+<p>
+<code>document_id</code>, <code>chunking_strategy</code>, <code>chunk_index</code>,
+and <code>section</code> are also persisted in PostgreSQL (see the Database
+Design section below), linked to each chunk's Weaviate object id — so chunk
+metadata can be queried from SQL without going back to the vector store.
+</p>
 
 <h2>🧠 Conversational Memory</h2>
 
@@ -365,7 +376,25 @@ documents
 ├── filename
 ├── content_type
 ├── source
+├── chunking_strategy
+├── chunk_count
 └── created_at
+</pre>
+
+<h3>Document Chunks</h3>
+
+<p>
+Each chunk stored in Weaviate has a matching row here, so a document's
+metadata can be cross-referenced between PostgreSQL and the vector store.
+</p>
+
+<pre>
+document_chunks
+├── id
+├── document_id   (→ documents.id)
+├── weaviate_id   (→ Weaviate object id)
+├── chunk_index
+└── section
 </pre>
 
 <h3>Bookings</h3>
@@ -424,14 +453,14 @@ uv sync
 <p>Create a <code>.env</code> file:</p>
 
 <pre>
-DATABASE_URL=postgresql+asyncpg://USER:PASSWORD@localhost/DATABASE
+DATABASE_URL=postgresql+psycopg://USER:PASSWORD@localhost/DATABASE
 
 WEAVIATE_CLUSTER_URL=https://YOUR-CLUSTER.weaviate.network
 WEAVIATE_API_KEY=YOUR_WEAVIATE_API_KEY
 
-GROQ_API_KEY=YOUR_GROQ_API_KEY
+GROQ_API=YOUR_GROQ_API_KEY
 GROQ_BASE_URL=https://api.groq.com/openai/v1
-MODEL=YOUR_GROQ_MODEL
+GROQ_MODEL=YOUR_GROQ_MODEL
 
 REDIS_URL=redis://localhost:6379/0
 </pre>
@@ -561,7 +590,7 @@ uv run python -m src.db.init_db
     <tr><td>SQL metadata storage</td><td>✅</td></tr>
     <tr><td>Custom RAG</td><td>✅</td></tr>
     <tr><td>Redis chat memory</td><td>✅</td></tr>
-    <tr><td>Multi-turn queries</td><td>✅</td></tr>
+    <tr><td>Multi-turn queries</td><td>⚠️ Partial — see Known Limitations</td></tr>
     <tr><td>Interview booking</td><td>✅</td></tr>
     <tr><td>LLM booking extraction</td><td>✅</td></tr>
     <tr><td>Booking persistence</td><td>✅</td></tr>
@@ -573,6 +602,55 @@ uv run python -m src.db.init_db
     <tr><td>Modular architecture</td><td>✅</td></tr>
   </tbody>
 </table>
+
+<h2>⚠️ Known Limitations</h2>
+
+<p>
+Documented here for transparency, based on internal review, rather than
+left implicit in the checklist above.
+</p>
+
+<h3>Multi-turn intent routing</h3>
+
+<p>
+Conversation history is passed into RAG answer generation, so pronoun and
+reference follow-ups ("What language are they built with?") are correctly
+understood once the assistant is on the RAG path. However, intent
+classification (<code>detect_intent</code>) currently looks only at the
+current message, not the conversation history. A context-only follow-up
+with no self-contained meaning of its own (e.g. "How many did you just
+say there were?") can be misclassified as a booking request and routed to
+the booking flow instead of being answered. Planned fix: pass conversation
+history into the intent classifier's prompt.
+</p>
+
+<h3>Retrieval on pronoun-heavy follow-ups</h3>
+
+<p>
+Vector retrieval embeds the raw follow-up query as-is, without rewriting it
+using prior conversation context. A pronoun-heavy follow-up can therefore
+occasionally retrieve less relevant chunks even though the LLM correctly
+resolves the pronoun during generation. A query-rewrite step before
+retrieval would close this gap.
+</p>
+
+<h3>Booking date anchor</h3>
+
+<p>
+The interview-booking extraction prompt anchors relative dates ("next
+Thursday", "tomorrow") to a fixed date string rather than computing the
+current date at request time. This needs to be made dynamic so relative
+dates keep resolving correctly.
+</p>
+
+<h3>Blocking I/O in async handlers</h3>
+
+<p>
+Redis, Weaviate, and local embedding calls are synchronous and are invoked
+directly from <code>async def</code> route handlers without an executor.
+This is not visible under light, single-request usage but can block the
+event loop under concurrent load.
+</p>
 
 <h2>🔐 Engineering Practices</h2>
 

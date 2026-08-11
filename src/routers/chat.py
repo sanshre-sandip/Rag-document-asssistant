@@ -208,6 +208,7 @@ async def chat(
         answer, chunks = answer_question(
             query=request.message,
             limit=request.limit,
+            history=history,
         )
 
         add_message(
