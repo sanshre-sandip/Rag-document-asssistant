@@ -1,23 +1,28 @@
-from src.services.llm import generate
-
-
-messages = [
-    {
-        "role": "system",
-        "content": "You are a helpful assistant.",
-    },
-    {
-        "role": "user",
-        "content": "Explain what FastAPI is in one sentence.",
-    },
-]
-
-
-response = generate(
-    messages=messages,
-    temperature=0.2,
-    max_tokens=100,
+from src.services.memory import (
+    add_message,
+    clear_history,
+    get_history,
 )
 
-print("LLM response:")
-print(response)
+
+conversation_id = "test-conversation"
+
+clear_history(conversation_id)
+
+add_message(
+    conversation_id,
+    "user",
+    "What technologies does the company use?",
+)
+
+add_message(
+    conversation_id,
+    "assistant",
+    "The company uses Python, FastAPI, PostgreSQL, Redis, and Weaviate.",
+)
+
+history = get_history(conversation_id)
+
+print("History:")
+for message in history:
+    print(message)
