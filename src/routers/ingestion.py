@@ -1,5 +1,3 @@
-from uuid import UUID
-
 from fastapi import (
     APIRouter,
     Depends,
@@ -10,11 +8,11 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.database import get_db
-from src.db.models import Document
 from src.db.models import (
     ChunkResponse,
     DocumentIngestionResponse,
 )
+from src.db.models import Document
 from src.services.chunking import (
     ChunkingStrategy,
     chunk_text,
@@ -23,7 +21,6 @@ from src.services.extractor import (
     DocumentExtractionError,
     extract_text,
 )
-
 
 router = APIRouter(
     prefix="/api/v1/documents",
