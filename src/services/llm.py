@@ -1,10 +1,10 @@
 from openai import OpenAI
 
-from src.config import groq_base_url, groq_api_key, model
+from src.config import GROQ_BASE_URL, GROQ_API_KEY, GROQ_MODEL
 
-api = groq_api_key
-base_url = groq_base_url
-groq_model = model
+api = GROQ_API_KEY
+base_url = GROQ_BASE_URL
+groq_model = GROQ_MODEL
 
 def get_llm_client() -> OpenAI:
     """
@@ -31,12 +31,8 @@ def generate(
 
     client = get_llm_client()
 
-    response = client.chat.completions.create(
-        model=groq_model,
-        messages=messages,
-        temperature=temperature,
-        max_tokens=max_tokens,
-    )
+    response = client.chat.completions.create(model=groq_model, messages=messages, temperature=temperature,
+                                              max_tokens=max_tokens, )
 
     message = response.choices[0].message
 

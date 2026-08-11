@@ -3,9 +3,12 @@ from uuid import UUID
 
 import weaviate
 from weaviate.classes.config import Configure, DataType, Property
+from weaviate.classes.init import AdditionalConfig, Timeout
 
-from src.config import weaviate_cluster_api_key, weaviate_cluster_url
+from src.config import WEAVIATE_API_KEY, WEAVIATE_CLUSTER_URL
 
+weaviate_cluster_api_key = WEAVIATE_API_KEY
+weaviate_cluster_url = WEAVIATE_CLUSTER_URL
 
 COLLECTION_NAME = "DocumentChunk"
 
@@ -15,6 +18,7 @@ def get_weaviate_client():
     return weaviate.connect_to_weaviate_cloud(
         cluster_url=weaviate_cluster_url,
         auth_credentials=weaviate_cluster_api_key,
+        additional_config=AdditionalConfig(timeout=Timeout(init=30)),
     )
 
 

@@ -5,17 +5,41 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-weaviate_cluster_url = os.getenv("WEAVIATE_CLUSTER_URL")
-weaviate_cluster_api_key = os.getenv("WEAVIATE_API_KEY")
-groq_api_key = os.getenv("GROQ_API_KEY")
-groq_base_url = os.getenv("GROQ_BASE_URL")
-model = os.getenv("MODEL")
+WEAVIATE_CLUSTER_URL = os.getenv("WEAVIATE_CLUSTER_URL")
+WEAVIATE_API_KEY = os.getenv("WEAVIATE_API_KEY")
+
+GROQ_API_KEY = os.getenv("GROQ_API")
+GROQ_BASE_URL = os.getenv(
+    "GROQ_BASE_URL",
+    "https://api.groq.com/openai/v1",
+)
+GROQ_MODEL = os.getenv(
+    "GROQ_MODEL",
+    "llama-3.1-8b-instant",
+)
+
+REDIS_URL = os.getenv(
+    "REDIS_URL",
+    "redis://localhost:6379/0",
+)
+
+
 if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL is not set in .env")
+    raise RuntimeError(
+        "DATABASE_URL is not set in .env"
+    )
 
-if not weaviate_cluster_url and not weaviate_cluster_api_key:
-    raise RuntimeError("Vector db not configured in .env")
+if not WEAVIATE_CLUSTER_URL:
+    raise RuntimeError(
+        "WEAVIATE_CLUSTER_URL is not set in .env"
+    )
 
-if not groq_api_key and not groq_base_url and not model:
-    raise RuntimeError("llm not configured in .env")
+if not WEAVIATE_API_KEY:
+    raise RuntimeError(
+        "WEAVIATE_API_KEY is not set in .env"
+    )
 
+if not GROQ_API_KEY:
+    raise RuntimeError(
+        "GROQ_API_KEY is not set in .env"
+    )
