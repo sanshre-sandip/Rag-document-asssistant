@@ -10,17 +10,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.db.database import get_db
 from src.db.models import (
     ChunkResponse,
+    Document,
     DocumentIngestionResponse,
 )
-from src.db.models import Document
 from src.services.chunking import (
     ChunkingStrategy,
     chunk_text,
 )
+from src.services.embeddings import embed_texts
 from src.services.extractor import (
     DocumentExtractionError,
     extract_text,
 )
+from src.services.vector_store import insert_chunks
+
 
 router = APIRouter(
     prefix="/api/v1/documents",
@@ -42,7 +45,9 @@ async def ingestion_health() -> dict[str, str]:
 )
 async def ingest_document(
     file: UploadFile = File(...),
-    chunking_strategy: ChunkingStrategy = ChunkingStrategy.STRUCTURE_AWARE,
+    chunking_strategy: ChunkingStrategy = (
+        ChunkingStrategy.STRUCTURE_AWARE
+    ),
     chunk_size: int = 1000,
     chunk_overlap: int = 150,
     db: AsyncSession = Depends(get_db),
@@ -109,6 +114,7 @@ async def ingest_document(
             detail="No chunks were generated from the document.",
         )
 
+
     document = Document(
         filename=file.filename,
         content_type=file.content_type,
@@ -119,6 +125,45 @@ async def ingest_document(
 
     await db.commit()
     await db.refresh(document)
+
+    # ---------------------------------------------------------
+    # Generate local embeddings
+    # ---------------------------------------------------------
+
+    vectors = embed_texts(
+        [chunk.text for chunk in chunks]
+    )
+
+
+    weaviate_chunks = [
+        {
+            "index": chunk.index,
+            "text": chunk.text,
+            "section": chunk.section,
+            "vector": vector,
+        }
+        for chunk, vector in zip(
+            chunks,
+            vectors,
+        )
+    ]
+
+    try:
+        weaviate_ids = insert_chunks(
+            document_id=document.id,
+            filename=document.filename,
+            chunks=weaviate_chunks,
+        )
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Document metadata was saved, but storing "
+                f"chunks in Weaviate failed: {exc}"
+            ),
+        ) from exc
+
 
     return DocumentIngestionResponse(
         document_id=document.id,

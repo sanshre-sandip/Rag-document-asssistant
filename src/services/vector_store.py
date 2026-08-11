@@ -2,7 +2,7 @@ from functools import lru_cache
 from uuid import UUID
 
 import weaviate
-from weaviate.classes.config import Configure, Property, DataType
+from weaviate.classes.config import Configure, DataType, Property
 
 from src.config import weaviate_cluster_api_key, weaviate_cluster_url
 
@@ -12,34 +12,13 @@ COLLECTION_NAME = "DocumentChunk"
 
 @lru_cache(maxsize=1)
 def get_weaviate_client():
-    """
-    Create and cache the Weaviate Cloud client.
-    """
-
     return weaviate.connect_to_weaviate_cloud(
         cluster_url=weaviate_cluster_url,
         auth_credentials=weaviate_cluster_api_key,
     )
 
 
-def close_weaviate_client() -> None:
-    """
-    Close the cached Weaviate client.
-    """
-
-    client = get_weaviate_client()
-    client.close()
-
-
 def ensure_collection() -> None:
-    """
-    Create the DocumentChunk collection if it does not exist.
-
-    Vectors are provided by our local
-    sentence-transformers model, so Weaviate
-    performs no automatic vectorization.
-    """
-
     client = get_weaviate_client()
 
     if client.collections.exists(COLLECTION_NAME):
@@ -73,49 +52,56 @@ def ensure_collection() -> None:
     )
 
 
-def insert_chunk(
+def insert_chunks(
     document_id: UUID,
     filename: str,
-    chunk_index: int,
-    text: str,
-    section: str | None,
-    vector: list[float],
-) -> str:
+    chunks: list[dict],
+) -> list[str]:
+    """
+    Insert document chunks and their pre-generated vectors
+    into Weaviate.
+    """
+
+    if not chunks:
+        return []
 
     ensure_collection()
 
     client = get_weaviate_client()
-    collection = client.collections.get(
-        COLLECTION_NAME
-    )
+    collection = client.collections.get(COLLECTION_NAME)
 
-    properties = {
-        "document_id": str(document_id),
-        "filename": filename,
-        "chunk_index": chunk_index,
-        "text": text,
-        "section": section,
-    }
+    ids: list[str] = []
 
-    uuid = collection.data.insert(
-        properties=properties,
-        vector=vector,
-    )
+    with collection.batch.dynamic() as batch:
+        for chunk in chunks:
+            object_id = batch.add_object(
+                properties={
+                    "document_id": str(document_id),
+                    "filename": filename,
+                    "chunk_index": chunk["index"],
+                    "text": chunk["text"],
+                    "section": chunk.get("section"),
+                },
+                vector=chunk["vector"],
+            )
 
-    return str(uuid)
+            ids.append(str(object_id))
+
+    return ids
 
 
 def search(
     vector: list[float],
     limit: int = 5,
 ) -> list[dict]:
+    """
+    Search Weaviate using a pre-generated query vector.
+    """
 
     ensure_collection()
 
     client = get_weaviate_client()
-    collection = client.collections.get(
-        COLLECTION_NAME
-    )
+    collection = client.collections.get(COLLECTION_NAME)
 
     response = collection.query.near_vector(
         near_vector=vector,
